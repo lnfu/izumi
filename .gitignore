@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+runs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# Original codebase (reference only, not part of izumi)
+robot-utility-models/
+stretch3-zmq/
+
+# URDF source (shipped copy lives in src/izumi/data/)
+d405_chain.urdf
+meshes/
