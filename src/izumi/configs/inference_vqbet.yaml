@@ -1,0 +1,10 @@
+defaults:
+  - model: resnet_dobbe
+  - policy: vqbet
+  - robot: stretch3
+  - _self_
+
+task: door_opening
+device: cuda
+image_buffer_size: 3
+checkpoint: ???

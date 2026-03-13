@@ -1,0 +1,2 @@
+_target_: izumi.models.encoder.TimmEncoder
+model_name: hf-hub:notmahi/dobb-e

@@ -1,0 +1,9 @@
+_target_: izumi.models.diffusion_policy.DiffusionPolicy
+action_dim: 7
+obs_dim: 512
+obs_window_size: 6
+action_sequence_length: 6
+num_extra_actions: 5
+policy_type: transformer
+data_act_scale: 1.0
+data_obs_scale: 1.0
