@@ -72,4 +72,6 @@ known-first-party = ["izumi"]
 testpaths = ["tests"]
 markers = [
     "robot: tests requiring a live robot connection (deselect with '-m \"not robot\"')",
+    "hub: tests requiring HuggingFace Hub network access",
+    "checkpoint: tests requiring a real checkpoint file (set IZUMI_CHECKPOINT env var)",
 ]
