@@ -14,6 +14,7 @@ Protocol (driver always binds, client always connects):
 """
 
 import logging
+import os
 
 import blosc2
 import cv2
@@ -68,7 +69,7 @@ class RobotClient:
         camera_timeout_ms: int = 2000,
         status_timeout_ms: int = 2000,
     ) -> None:
-        self.host = host
+        self.host = os.path.expandvars(host)
         self.ports = {**_DEFAULT_PORTS, **(ports or {})}
         self.camera_timeout_ms = camera_timeout_ms
         self.status_timeout_ms = status_timeout_ms
