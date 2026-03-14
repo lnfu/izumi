@@ -103,7 +103,7 @@ class _Transformer(nn.Module):
         self.ln_f = nn.LayerNorm(config.n_embd, bias=config.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, _ = x.size()
+        _B, T, _ = x.size()
         pos = torch.arange(T, device=x.device).unsqueeze(0)  # (1, T)
         x = self.drop(self.wte(x) + self.wpe(pos))
         for block in self.h:
@@ -159,7 +159,7 @@ class GPT(nn.Module):
         Returns:
             Float tensor ``(B, T, output_dim)``
         """
-        B, T, _ = x.size()
+        _B, T, _ = x.size()
         assert self.config.block_size >= T, (
             f"Sequence length {T} exceeds block_size {self.config.block_size}"
         )
