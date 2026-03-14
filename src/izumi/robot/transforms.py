@@ -1,6 +1,6 @@
 """Action format conversions between model output and robot ServoCommand.
 
-The model outputs 7D actions in the D405 camera optical frame:
+The model outputs 7D actions in the "personal camera" frame:
     [dx, dy, dz, rx, ry, rz, gripper]
 
 where:
@@ -8,9 +8,23 @@ where:
   - (rx, ry, rz): rotation delta as axis-angle vector (rad)
   - gripper: absolute gripper opening in [0, 1]
 
+The "personal camera" frame is defined by the data-collection pipeline
+(robot-utility-models/data-collection/process_from_r3ds.py): raw Record3D
+poses are converted via ``apply_permutation_transform`` (P @ M @ P.T) before
+being used as training labels.  At inference time the model therefore outputs
+in the permuted frame:
+
+    v_optical = P_R.T @ v_personal        (undo the permutation)
+    v_ee      = R_OPTICAL_IN_EE @ v_optical
+
+Combined: v_ee = R_OPTICAL_IN_EE @ P_R.T @ v_personal = R_MODEL_TO_EE @ v_model
+
+where P_R is the 3x3 rotation block of the permutation matrix P from
+``action_transforms.py``, and R_OPTICAL_IN_EE is derived from the D405
+URDF kinematic chain (link_wrist_roll → gripper_camera_color_optical_frame).
+
 ServoCommand expects a Pose3D delta in the EE (wrist_roll) frame with
-quaternion orientation.  This module precomputes the constant rotation
-matrix R_OPTICAL_IN_EE from the D405 URDF kinematic chain and applies it.
+quaternion orientation.
 """
 
 import numpy as np
@@ -33,15 +47,23 @@ def _build_r_optical_in_ee() -> np.ndarray:
     Returns:
         (3, 3) rotation matrix R such that v_ee = R @ v_optical.
     """
-    # Each URDF joint rotation: R = Rz(yaw)*Ry(pitch)*Rx(roll) = from_euler('XYZ', [r,p,y])
     r1 = Rotation.from_euler("XYZ", [0.0, 0.0, -np.pi])
     r2 = Rotation.from_euler("XYZ", [0.0, -1.3963, -np.pi / 2])
     r5 = Rotation.from_euler("XYZ", [-np.pi / 2, 0.0, -np.pi / 2])
     return (r1 * r2 * r5).as_matrix()
 
 
-# Precomputed constant: transforms vectors from D405 optical frame → EE (wrist_roll) frame
+# Permutation matrix P_R from robot-utility-models/data-collection/utils/action_transforms.py.
+# P_R maps vectors from D405 optical frame → "personal camera" (the model's training frame).
+# P_R.T is the inverse: personal camera → D405 optical.
+_P_R = np.array([[0, 1, 0], [0, 0, -1], [-1, 0, 0]], dtype=float)
+
+# R_OPTICAL_IN_EE: D405 optical frame → EE (wrist_roll) frame
 R_OPTICAL_IN_EE: np.ndarray = _build_r_optical_in_ee()
+
+# Full model-to-EE transform:
+#   personal cam → D405 optical (P_R.T) → EE (R_OPTICAL_IN_EE)
+R_MODEL_TO_EE: np.ndarray = R_OPTICAL_IN_EE @ _P_R.T
 
 
 def model_action_to_servo(action: np.ndarray) -> ServoCommand:
@@ -49,18 +71,18 @@ def model_action_to_servo(action: np.ndarray) -> ServoCommand:
 
     Args:
         action: ``(7,)`` float array ``[dx, dy, dz, rx, ry, rz, gripper]``
-                expressed in the D405 camera optical frame.
+                expressed in the model's "personal camera" frame.
 
     Returns:
         ``ServoCommand`` with ``ee_pose`` expressed in the EE (wrist_roll) frame.
     """
-    t_optical = action[:3]
-    aa_optical = action[3:6]
+    t_model = action[:3]
+    aa_model = action[3:6]
     gripper = float(np.clip(action[6], 0.0, 1.0))
 
-    # Rotate translation and rotation axis from optical frame to EE frame
-    t_ee = R_OPTICAL_IN_EE @ t_optical
-    aa_ee = R_OPTICAL_IN_EE @ aa_optical
+    # Rotate translation and rotation axis from personal-camera frame to EE frame
+    t_ee = R_MODEL_TO_EE @ t_model
+    aa_ee = R_MODEL_TO_EE @ aa_model
 
     # Axis-angle → quaternion (x, y, z, w)
     q = Rotation.from_rotvec(aa_ee).as_quat()

@@ -5,7 +5,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 from stretch3_zmq.core.messages.servo import ServoCommand
 
-from izumi.robot.transforms import R_OPTICAL_IN_EE, model_action_to_servo
+from izumi.robot.transforms import R_MODEL_TO_EE, R_OPTICAL_IN_EE, model_action_to_servo
 
 
 def test_r_optical_in_ee_is_rotation_matrix():
@@ -35,11 +35,11 @@ def test_zero_action_gives_identity_quaternion():
 
 
 def test_translation_rotated_by_r():
-    """A pure translation action should be rotated by R_OPTICAL_IN_EE."""
-    t_optical = np.array([1.0, 0.0, 0.0])
-    action = np.array([*t_optical, 0.0, 0.0, 0.0, 0.5])
+    """A pure translation action should be rotated by R_MODEL_TO_EE."""
+    t_model = np.array([1.0, 0.0, 0.0])
+    action = np.array([*t_model, 0.0, 0.0, 0.0, 0.5])
     cmd = model_action_to_servo(action)
-    expected = R_OPTICAL_IN_EE @ t_optical
+    expected = R_MODEL_TO_EE @ t_model
     assert cmd.ee_pose.position.x == pytest.approx(float(expected[0]))
     assert cmd.ee_pose.position.y == pytest.approx(float(expected[1]))
     assert cmd.ee_pose.position.z == pytest.approx(float(expected[2]))
@@ -79,12 +79,12 @@ def test_output_type_is_servo_command():
 
 
 def test_rotation_roundtrip():
-    """Axis-angle → quaternion → back to axis-angle should be identity (small angle)."""
-    aa_optical = np.array([0.05, 0.03, -0.02])
-    action = np.array([0.0, 0.0, 0.0, *aa_optical, 0.5])
+    """Axis-angle → quaternion → back to axis-angle should match R_MODEL_TO_EE applied to input."""
+    aa_model = np.array([0.05, 0.03, -0.02])
+    action = np.array([0.0, 0.0, 0.0, *aa_model, 0.5])
     cmd = model_action_to_servo(action)
     o = cmd.ee_pose.orientation
     q = np.array([o.x, o.y, o.z, o.w])
     aa_recovered_ee = Rotation.from_quat(q).as_rotvec()
-    aa_expected_ee = R_OPTICAL_IN_EE @ aa_optical
+    aa_expected_ee = R_MODEL_TO_EE @ aa_model
     np.testing.assert_allclose(aa_recovered_ee, aa_expected_ee, atol=1e-6)
