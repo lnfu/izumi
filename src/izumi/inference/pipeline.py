@@ -37,12 +37,14 @@ class InferencePipeline:
         self,
         policy,
         robot_client,
-        buffer_size: int = 3,
+        buffer_size: int | None = None,
         control_hz: float = 5.0,
         device: str | torch.device = "cpu",
     ) -> None:
         self.policy = policy
         self.robot_client = robot_client
+        if buffer_size is None:
+            buffer_size = getattr(policy, "obs_horizon", 3)
         self.buffer = ObservationBuffer(maxlen=buffer_size)
         self.control_hz = control_hz
         self.device = torch.device(device)
